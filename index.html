@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silver | Materials Data Series</title>
+<meta name="description" content="Interactive data dashboard for silver: production, demand, supply deficit, prices, and scale comparisons. By Ibtisam Ahmed Khan.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Fira+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+/* ── Design tokens ─────────────────────────────────── */
+:root {
+  --bg-base:    oklch(12% 0.012 230);
+  --bg-raised:  oklch(16% 0.014 228);
+  --bg-panel:   oklch(19% 0.016 228);
+  --border:     oklch(24% 0.018 228);
+  --border-dim: oklch(20% 0.015 228);
+
+  --text:       oklch(91% 0.006 228);
+  --text-muted: oklch(62% 0.012 228);
+  --text-faint: oklch(40% 0.010 228);
+
+  /* Silver-teal accent */
+  --accent:         oklch(77% 0.12 202);
+  --accent-dim:     oklch(77% 0.12 202 / 0.18);
+  --accent-faint:   oklch(77% 0.12 202 / 0.07);
+  --accent-text:    oklch(84% 0.10 202);
+
+  /* Semantic */
+  --deficit-color:  oklch(67% 0.18 28);
+  --surplus-color:  oklch(72% 0.15 150);
+  --neutral-color:  oklch(72% 0.08 228);
+
+  --font-sans: 'Fira Sans', system-ui, sans-serif;
+  --font-mono: 'Fira Code', monospace;
+
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-lg: 12px;
+
+  --shadow: 0 2px 12px oklch(6% 0.01 228 / 0.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  html { scroll-behavior: auto; }
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-base);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Header ────────────────────────────────────────── */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.header-series {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-material {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-text);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.header-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.header-tag {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+}
+
+.tag-critical {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.tag-year {
+  color: var(--text-faint);
+  border-color: var(--border);
+}
+
+/* ── KPI strip ─────────────────────────────────────── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+
+.kpi-item {
+  padding: 20px 24px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-item:last-child { border-right: none; }
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.kpi-value span.accent { color: var(--accent-text); }
+
+.kpi-context {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.kpi-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 2px;
+  width: fit-content;
+}
+
+.ind-deficit { background: oklch(67% 0.18 28 / 0.15); color: oklch(72% 0.18 28); }
+.ind-record  { background: var(--accent-faint); color: var(--accent-text); }
+.ind-up      { background: oklch(72% 0.15 150 / 0.12); color: oklch(70% 0.14 150); }
+
+/* ── Tab nav ───────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  font: 500 13px var(--font-sans);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.tab-btn:hover { color: var(--text); }
+
+.tab-btn.active {
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
+}
+
+.tab-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.tab-btn svg { opacity: 0.7; flex-shrink: 0; }
+.tab-btn.active svg { opacity: 1; }
+
+/* ── Tab panels ────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.panel-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+/* ── Section headers ───────────────────────────────── */
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  max-width: 65ch;
+}
+
+/* ── Chart panels ──────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.chart-grid-2 { grid-template-columns: 1fr 1fr; }
+.chart-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.chart-box {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  overflow: hidden;
+}
+
+.chart-box-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -0.005em;
+}
+
+.chart-box-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  font-family: var(--font-mono);
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-wrap canvas { display: block; }
+
+/* ── World map area ────────────────────────────────── */
+#map-container {
+  position: relative;
+  width: 100%;
+  min-height: 340px;
+  background: var(--bg-panel);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ── Producers table ───────────────────────────────── */
+.producers-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.producers-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border);
+}
+
+.producers-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-dim);
+  vertical-align: middle;
+}
+
+.producers-table tr:last-child td { border-bottom: none; }
+
+.producers-table tr:hover td { background: var(--accent-faint); }
+
+.rank-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  width: 28px;
+}
+
+.country-name { font-weight: 500; color: var(--text); }
+
+.share-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.share-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--accent);
+  opacity: 0.85;
+  min-width: 2px;
+}
+
+.share-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prod-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+}
+
+.prod-reserves {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+/* ── Scale section ─────────────────────────────────── */
+.scale-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.scale-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.scale-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--accent-faint);
+  border: 1px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent-text);
+}
+
+.scale-body { flex: 1; min-width: 0; }
+
+.scale-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-text);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.scale-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.scale-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.scale-hero {
+  grid-column: 1 / -1;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  text-align: center;
+}
+
+.scale-hero-num {
+  font-size: 64px;
+  font-weight: 700;
+  color: var(--accent-text);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.scale-hero-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.scale-hero-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 55ch;
+  margin: 0 auto;
+}
+
+/* ── Deficit callout ───────────────────────────────── */
+.deficit-callout {
+  background: oklch(67% 0.18 28 / 0.08);
+  border: 1px solid oklch(67% 0.18 28 / 0.3);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.deficit-callout svg { flex-shrink: 0; margin-top: 2px; color: oklch(72% 0.18 28); }
+
+.deficit-callout p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.deficit-callout strong { color: var(--text); }
+
+/* ── Critical mineral callout ──────────────────────── */
+.critical-callout {
+  background: var(--accent-faint);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.critical-callout svg { flex-shrink: 0; margin-top: 2px; color: var(--accent-text); }
+
+.critical-callout p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.critical-callout strong { color: var(--text); }
+
+/* ── Source footer ─────────────────────────────────── */
+.source-footer {
+  padding: 24px 32px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.source-links {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+}
+
+.source-links a {
+  color: var(--text-faint);
+  text-decoration: none;
+}
+
+.source-links a:hover { color: var(--accent-text); }
+.source-links a:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 2px;
+}
+
+.attribution {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+}
+
+.attribution a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+/* ── Responsive ────────────────────────────────────── */
+@media (max-width: 900px) {
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+  .chart-grid-3 { grid-template-columns: 1fr; }
+  .scale-grid { grid-template-columns: 1fr; }
+  .panel-inner { padding: 20px 16px; }
+  .site-header { padding: 16px; flex-wrap: wrap; }
+  .header-tag { margin-left: 0; }
+  .tab-nav { padding: 0 8px; overflow-x: auto; }
+}
+
+@media (max-width: 600px) {
+  .kpi-strip { grid-template-columns: 1fr 1fr; }
+  .kpi-item { padding: 16px; }
+  .kpi-value { font-size: 20px; }
+  .scale-hero-num { font-size: 44px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <span class="header-series">Materials Data Series</span>
+  <div class="header-divider" aria-hidden="true"></div>
+  <div class="header-title">
+    <span class="header-material">Silver (Ag)</span>
+    <span class="header-sub">Global production, demand, prices &amp; scale analysis</span>
+  </div>
+  <div class="header-tag">
+    <span class="tag tag-critical">US Critical Mineral 2025</span>
+    <span class="tag tag-year">Data: 2024-25</span>
+  </div>
+</header>
+
+<!-- KPI strip -->
+<div class="kpi-strip" role="region" aria-label="Key metrics">
+  <div class="kpi-item">
+    <span class="kpi-label">Mine production</span>
+    <div class="kpi-value">25,300 <span style="font-size:14px;font-weight:400;color:var(--text-muted)">t</span></div>
+    <span class="kpi-context">2024 world total (USGS MCS 2026)</span>
+    <span class="kpi-indicator ind-up">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 2l4 6H1z" fill="currentColor"/></svg>
+      +0.9% vs 2023
+    </span>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-label">Avg price 2024</span>
+    <div class="kpi-value">$28.37 <span style="font-size:14px;font-weight:400;color:var(--text-muted)">/oz</span></div>
+    <span class="kpi-context">Annual average, troy ounce</span>
+    <span class="kpi-indicator ind-up">$38.00/oz in 2025</span>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-label">Supply deficit 2024</span>
+    <div class="kpi-value">148.9 <span style="font-size:14px;font-weight:400;color:var(--text-muted)">Moz</span></div>
+    <span class="kpi-context">4th consecutive year demand outpaced supply</span>
+    <span class="kpi-indicator ind-deficit">4-yr cumulative: 678 Moz</span>
+  </div>
+  <div class="kpi-item">
+    <span class="kpi-label">Industrial demand</span>
+    <div class="kpi-value">680.5 <span style="font-size:14px;font-weight:400;color:var(--text-muted)">Moz</span></div>
+    <span class="kpi-context">4th consecutive record; PV solar now 29% share</span>
+    <span class="kpi-indicator ind-record">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M5 1L6.5 4h3l-2.5 1.8 1 3L5 7 2 8.8l1-3L.5 4h3z" fill="currentColor"/></svg>
+      All-time record
+    </span>
+  </div>
+</div>
+
+<!-- Tab navigation -->
+<nav class="tab-nav" role="tablist" aria-label="Dashboard sections">
+  <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-overview" id="tab-overview" onclick="switchTab('overview')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+    Overview
+  </button>
+  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-production" id="tab-production" onclick="switchTab('production')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M7 1v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Production
+  </button>
+  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-demand" id="tab-demand" onclick="switchTab('demand')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 10L5 6l3 2 4-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Demand
+  </button>
+  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-supplydemand" id="tab-supplydemand" onclick="switchTab('supplydemand')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M1 7h12M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Supply vs Demand
+  </button>
+  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-prices" id="tab-prices" onclick="switchTab('prices')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 11L5 7l2.5 2 2-3 2.5 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="3" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+    Prices
+  </button>
+  <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-scale" id="tab-scale" onclick="switchTab('scale')">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/></svg>
+    Scale
+  </button>
+</nav>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Overview
+────────────────────────────────────────────────── -->
+<div class="tab-panel active" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+  <div class="panel-inner">
+
+    <div class="critical-callout">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 2l1.5 4h4.2l-3.4 2.5 1.3 4L9 10l-3.6 2.5 1.3-4L3.3 6H7.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <p><strong>Silver added to the US Critical Minerals List in November 2025</strong> (Federal Register 90 FR 50494). The designation reflects silver's irreplaceable role in photovoltaics, electronics, and defence applications, and the US's 77% net import reliance on foreign supply.</p>
+    </div>
+
+    <div class="section-header">
+      <h2 class="section-title">Supply-Demand at a glance</h2>
+      <p class="section-desc">Silver has been in structural deficit for four consecutive years. Mine supply cannot keep pace with record industrial demand driven by solar PV, EVs, and AI infrastructure.</p>
+    </div>
+
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-box">
+        <div class="chart-box-title">Where silver is used (2024 global demand)</div>
+        <div class="chart-box-sub">Moz = million troy ounces. Total: 1,162.5 Moz</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chart-overview-demand" aria-label="Silver demand by segment 2024"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title">Supply vs demand trend 2019-2024</div>
+        <div class="chart-box-sub">Total supply (mine + recycling) vs total demand in million troy ounces</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chart-overview-trend" aria-label="Silver supply demand trend 2019-2024"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="chart-box">
+        <div class="chart-box-title">Top 10 silver producers vs global reserves (2024)</div>
+        <div class="chart-box-sub">Mine output in metric tons vs. known reserves in metric tons (USGS 2026)</div>
+        <div class="chart-wrap" style="height:280px">
+          <canvas id="chart-overview-producers" aria-label="Top silver producing countries and reserves"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Production
+────────────────────────────────────────────────── -->
+<div class="tab-panel" id="panel-production" role="tabpanel" aria-labelledby="tab-production">
+  <div class="panel-inner">
+    <div class="section-header">
+      <h2 class="section-title">Where silver comes from</h2>
+      <p class="section-desc">World mine production in 2024: 25,300 metric tons (813 Moz). Over 60% is extracted as a byproduct of lead-zinc, copper, and gold mining, so silver supply is partly driven by those markets.</p>
+    </div>
+
+    <div class="chart-grid chart-grid-2" style="margin-bottom:20px">
+      <div class="chart-box" style="grid-column: 1 / -1">
+        <div class="chart-box-title">Production map: top producers by output share (2024)</div>
+        <div class="chart-box-sub">Circle size proportional to output. Data: USGS MCS 2026.</div>
+        <div id="map-container" style="min-height:360px">
+          <!-- D3 fills this with SVG -->
+          <div id="chart-world-map" aria-label="World map of silver producing countries" style="width:100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-box">
+        <div class="chart-box-title">Output by country (metric tons, 2024)</div>
+        <div class="chart-box-sub">Excludes "Other" category. USGS MCS 2026.</div>
+        <div class="chart-wrap" style="height:320px">
+          <canvas id="chart-prod-bar" aria-label="Silver production by country bar chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title">Top producers: output vs known reserves</div>
+        <div class="chart-box-sub">Both axes in metric tons (reserves log scale)</div>
+        <div style="overflow-x:auto">
+          <table class="producers-table" aria-label="Silver producing countries with production and reserves data">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Country</th>
+                <th style="min-width:160px">Share of output</th>
+                <th style="text-align:right">Output (t)</th>
+                <th style="text-align:right">Reserves (t)</th>
+              </tr>
+            </thead>
+            <tbody id="producers-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="chart-box">
+        <div class="chart-box-title">Note on silver mineralogy</div>
+        <div class="chart-box-sub">Context</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.7">
+          More than two-thirds of world silver comes as a byproduct of base-metal mining. Mexico's dominance (23% share) partly reflects its massive lead-zinc-gold-silver polymetallic deposits. Peru holds the world's largest known silver reserves (110,000 t) and ranks third in output. Russia (92,000 t reserves) and Australia (109,000 t reserves) are the sleeper reserve stories: both hold more reserves than Mexico, but produce less, suggesting long mine lives and potential growth headroom.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Demand
+────────────────────────────────────────────────── -->
+<div class="tab-panel" id="panel-demand" role="tabpanel" aria-labelledby="tab-demand">
+  <div class="panel-inner">
+    <div class="section-header">
+      <h2 class="section-title">What silver goes into</h2>
+      <p class="section-desc">Total demand fell 3% to 1,162.5 Moz in 2024, but industrial demand hit a record 680.5 Moz for the fourth year running. Solar photovoltaics now accounts for 29% of all industrial silver demand, up from 11% in 2014.</p>
+    </div>
+
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-box">
+        <div class="chart-box-title">Global demand breakdown (2024)</div>
+        <div class="chart-box-sub">Total: 1,162.5 Moz. Source: Silver Institute / Metals Focus.</div>
+        <div class="chart-wrap" style="height:280px">
+          <canvas id="chart-demand-pie" aria-label="Silver demand by segment pie chart 2024"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title">US domestic end-uses (2025 estimate)</div>
+        <div class="chart-box-sub">Pct of apparent US consumption. Source: USGS MCS 2026.</div>
+        <div class="chart-wrap" style="height:280px">
+          <canvas id="chart-demand-uses" aria-label="US silver end uses 2025"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px" class="chart-box">
+      <div class="chart-box-title">PV solar: the decade-long shift</div>
+      <div class="chart-box-sub">Solar photovoltaics share of industrial silver demand (%)</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="chart-pv-trend" aria-label="Solar PV share of silver industrial demand trend"></canvas>
+      </div>
+    </div>
+
+    <div style="margin-top:20px" class="chart-box">
+      <div class="chart-box-title">Why industrial demand keeps breaking records</div>
+      <div class="chart-box-sub">Three structural forces are pulling in the same direction simultaneously</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:4px">
+        <div style="padding:16px;background:var(--bg-panel);border-radius:var(--radius);border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:8px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">Solar PV</div>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6">Each standard solar panel contains around 18g of silver for electrical contacts. Global solar capacity additions are accelerating, making PV the fastest-growing silver application. Silver loadings per panel are falling, but panel volumes are rising faster.</p>
+        </div>
+        <div style="padding:16px;background:var(--bg-panel);border-radius:var(--radius);border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:8px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">Electric vehicles</div>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6">EVs use roughly twice the silver of an ICE vehicle, mainly in onboard electronics and ADAS (advanced driver-assistance) systems. Each EV requires around 25-50g of silver. Rising EV penetration is a structural demand tailwind through the decade.</p>
+        </div>
+        <div style="padding:16px;background:var(--bg-panel);border-radius:var(--radius);border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:8px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.08em">AI infrastructure</div>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.6">Data centres and power grid upgrades use silver in electrical contacts, connectors, and switches. The AI compute build-out is generating an unexpected new demand stream for silver that didn't exist at scale two years ago.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Supply vs Demand
+────────────────────────────────────────────────── -->
+<div class="tab-panel" id="panel-supplydemand" role="tabpanel" aria-labelledby="tab-supplydemand">
+  <div class="panel-inner">
+
+    <div class="section-header">
+      <h2 class="section-title">The structural deficit</h2>
+      <p class="section-desc">From 2021 onward, global silver demand has consistently outpaced combined mine output and recycling. The four-year cumulative deficit (2021-2024) reached 678 Moz, equivalent to roughly 10 months of global mine supply.</p>
+    </div>
+
+    <div class="deficit-callout">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M9 3v6M9 13v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      <p><strong>Four-year deficit total: 678 Moz (21,088 metric tons).</strong> This represents about 10 months of 2024 mine production absorbed by demand with no matching supply response. The deficit was forecast to narrow to 117.6 Moz in 2025, but structural demand drivers (solar, EVs, AI data centres) are not slowing down.</p>
+    </div>
+
+    <div class="chart-box" style="margin-bottom:20px">
+      <div class="chart-box-title">Mine supply, recycling, total demand (Moz, 2019-2024)</div>
+      <div class="chart-box-sub">The gap between total supply (stacked) and demand (line) is the market deficit when demand exceeds supply.</div>
+      <div class="chart-wrap" style="height:320px">
+        <canvas id="chart-sd-stacked" aria-label="Silver supply demand stacked chart 2019 to 2024"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-box">
+        <div class="chart-box-title">Annual deficit / surplus (Moz, 2019-2024)</div>
+        <div class="chart-box-sub">Positive = demand exceeds supply. Negative = surplus.</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-deficit-bar" aria-label="Silver annual deficit bar chart 2019 to 2024"></canvas>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title">Recycling contribution (Moz, 2019-2024)</div>
+        <div class="chart-box-sub">Secondary supply reached a 12-year high of 193.9 Moz in 2024.</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-recycling" aria-label="Silver recycling trend 2019 to 2024"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Prices
+────────────────────────────────────────────────── -->
+<div class="tab-panel" id="panel-prices" role="tabpanel" aria-labelledby="tab-prices">
+  <div class="panel-inner">
+    <div class="section-header">
+      <h2 class="section-title">Silver price history</h2>
+      <p class="section-desc">Annual average silver prices, USD per troy ounce. The 2025 average of $38.00/oz was 34% higher than 2024, driven by the continuing supply deficit and silver's addition to the US Critical Minerals List.</p>
+    </div>
+
+    <div class="chart-box" style="margin-bottom:20px">
+      <div class="chart-box-title">Annual average price 2015-2025 (USD per troy ounce)</div>
+      <div class="chart-box-sub">Source: USGS MCS 2026, Engelhard/S&amp;P Global Platts Metals Week. 2025 = full-year average from USGS.</div>
+      <div class="chart-wrap" style="height:300px">
+        <canvas id="chart-price-history" aria-label="Silver price history 2015 to 2025"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-box">
+        <div class="chart-box-title">Price context: 2025 milestones</div>
+        <div class="chart-box-sub">Key price events from USGS MCS 2026</div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap;padding-top:2px">Jan 2025</span>
+            <div>
+              <span style="font-size:14px;font-weight:600;color:var(--text)">$29.35/oz</span>
+              <p style="font-size:12px;color:var(--text-muted)">Year low. Opened 2025 near 2024 average levels.</p>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border-dim)"></div>
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap;padding-top:2px">Nov 2025</span>
+            <div>
+              <span style="font-size:14px;font-weight:600;color:var(--accent-text)">$53.60/oz</span>
+              <p style="font-size:12px;color:var(--text-muted)">Year high on 13 Nov 2025. Price increased for 11 consecutive months. Supply deficit cited as primary driver.</p>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border-dim)"></div>
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-faint);white-space:nowrap;padding-top:2px">FY 2025</span>
+            <div>
+              <span style="font-size:14px;font-weight:600;color:var(--text)">$38.00/oz avg</span>
+              <p style="font-size:12px;color:var(--text-muted)">Full-year average, +34% above 2024. US Critical Mineral designation in November amplified investor attention.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title">US net import reliance (%) 2021-2025</div>
+        <div class="chart-box-sub">Percentage of apparent consumption sourced from imports minus exports. USGS MCS 2026.</div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="chart-import-reliance" aria-label="US silver import reliance 2021 to 2025"></canvas>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:12px;line-height:1.5">Mexico supplies 47% of US silver imports (2021-24 average), making bilateral trade policy a material supply-chain risk. Canada contributes 18%, Chile and Turkey 5% each.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────────
+     PANEL: Scale
+────────────────────────────────────────────────── -->
+<div class="tab-panel" id="panel-scale" role="tabpanel" aria-labelledby="tab-scale">
+  <div class="panel-inner">
+    <div class="section-header">
+      <h2 class="section-title">What 25,300 tonnes looks like</h2>
+      <p class="section-desc">Annual world silver mine production (25,300 metric tons in 2024) is tiny relative to base metals, but it underpins technologies that run the modern world. Here is what that tonnage means in physical terms.</p>
+    </div>
+
+    <div class="scale-hero">
+      <div class="scale-hero-num">96%</div>
+      <div class="scale-hero-label">of one Olympic swimming pool</div>
+      <p class="scale-hero-desc">Melted down and poured into a 50m x 25m x 2m Olympic pool, the entire world's 2024 silver mine output would fill 96% of it. Silver's density (10.49 g/cm3) means 25,300 tonnes occupies only ~2,413 cubic metres. A reminder that this is the metal behind every solar panel, smartphone screen, and EV circuit board on the planet.</p>
+    </div>
+
+    <div class="scale-grid">
+      <div class="scale-card">
+        <div class="scale-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="3" y="6" width="16" height="11" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 6V5a1 1 0 011-1h6a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="12" r="1.5" fill="currentColor"/></svg>
+        </div>
+        <div class="scale-body">
+          <div class="scale-value">84 billion</div>
+          <div class="scale-label">smartphones</div>
+          <p class="scale-desc">At 0.3g of silver per device, annual mine output could supply the silver for 84 billion smartphones. Earth's entire population uses about 6.8 billion active smartphones today.</p>
+        </div>
+      </div>
+
+      <div class="scale-card">
+        <div class="scale-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M4 11h14M4 11l3.5-3.5M4 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 6l-3 5 3 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="scale-body">
+          <div class="scale-value">1.4 billion</div>
+          <div class="scale-label">solar panels</div>
+          <p class="scale-desc">A standard 60-cell panel uses around 18g of silver for electrical contacts. Annual mine output could supply the silver for roughly 1.4 billion panels, more than double global annual installations in 2024.</p>
+        </div>
+      </div>
+
+      <div class="scale-card">
+        <div class="scale-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M11 7v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="scale-body">
+          <div class="scale-value">0.80 kg/s</div>
+          <div class="scale-label">mined every second</div>
+          <p class="scale-desc">The world extracts roughly 0.8 kilograms of silver every second of every day. That is about the weight of a standard 750ml bottle of water, ticked off every single second, around the clock, all year long.</p>
+        </div>
+      </div>
+
+      <div class="scale-card">
+        <div class="scale-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3l2 5h5l-4 3 1.5 5L11 13l-4.5 3L8 11 4 8h5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="scale-body">
+          <div class="scale-value">1 : 4,000</div>
+          <div class="scale-label">silver vs steel (by mass)</div>
+          <p class="scale-desc">Humanity produces roughly 1.9 billion tonnes of steel per year. Silver output is 4,000 times smaller by mass. Yet silver commands a price roughly 1,000 times higher per kilogram than structural steel.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="chart-box">
+        <div class="chart-box-title">Silver vs other metals and materials (annual output, Mt)</div>
+        <div class="chart-box-sub">Log scale required: steel is 75,000x larger by mass. Silver's value comes from scarcity, not abundance.</div>
+        <div class="chart-wrap" style="height:260px">
+          <canvas id="chart-scale-compare" aria-label="Silver compared to other metals annual production"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="source-footer">
+  <div class="source-links">
+    Sources:
+    <a href="https://pubs.usgs.gov/periodicals/mcs2026/mcs2026-silver.pdf" target="_blank" rel="noopener">USGS MCS 2026</a> |
+    <a href="https://silverinstitute.org/silver-supply-demand/" target="_blank" rel="noopener">Silver Institute World Silver Survey 2025</a> |
+    <a href="https://www.federalregister.gov/documents/2025/11/07/2025-24916/2025-final-list-of-critical-minerals" target="_blank" rel="noopener">Federal Register 90 FR 50494</a>
+  </div>
+  <div class="attribution">
+    <a href="https://linkedin.com/in/ibtisam-ahmed-khan" target="_blank" rel="noopener">Ibtisam Ahmed Khan</a> |
+    Materials Data Series |
+    <a href="https://github.com/ibtisamkhan96/silver-materials-dashboard" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+
+<script>
+/* ── Shared chart defaults ─────────────────────────── */
+Chart.defaults.font.family = "'Fira Sans', system-ui, sans-serif";
+Chart.defaults.color = 'oklch(62% 0.012 228)';
+Chart.defaults.borderColor = 'oklch(24% 0.018 228)';
+
+const ACCENT    = '#5cc8e0';
+const ACCENT_DIM = 'rgba(92, 200, 224, 0.2)';
+const ACCENT2   = '#7b9fe8';
+const DEFICIT_C = '#e07850';
+const SURPLUS_C = '#52c87a';
+const TEXT      = 'rgba(220,230,245,0.85)';
+const MUTED     = 'rgba(140,160,185,0.7)';
+const GRID_C    = 'rgba(48,60,80,0.7)';
+
+function baseOptions(extra = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 },
+    plugins: {
+      legend: {
+        labels: { color: MUTED, font: { size: 12 }, boxWidth: 12, padding: 16 }
+      },
+      tooltip: {
+        backgroundColor: 'oklch(16% 0.014 228)',
+        borderColor: 'oklch(30% 0.020 228)',
+        borderWidth: 1,
+        titleColor: TEXT,
+        bodyColor: MUTED,
+        padding: 12,
+        cornerRadius: 6,
+      }
+    },
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      ...extra.scales,
+    },
+    ...extra
+  };
+}
+
+/* ── Data ──────────────────────────────────────────── */
+const years   = [2019, 2020, 2021, 2022, 2023, 2024];
+const mineSup = [836.5, 784.4, 829.0, 822.5, 820.8, 819.7];
+const recyc   = [169.8, 182.2, 182.2, 180.2, 182.9, 193.9];
+const totalSup= mineSup.map((v,i) => +(v + recyc[i]).toFixed(1));
+const demand  = [991.8, 896.1, 1049.4, 1242.1, 1197.2, 1162.5];
+const deficit = demand.map((v,i) => +(v - totalSup[i]).toFixed(1));
+const prices  = [15.68,17.14,17.04,15.71,16.19,20.55,25.23,21.88,23.54,28.37,38.00];
+const priceYrs= [2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+
+const producers = [
+  { c: 'Mexico',        p: 5780,  r: 37000  },
+  { c: 'China',         p: 3430,  r: 67000  },
+  { c: 'Peru',          p: 3510,  r: 110000 },
+  { c: 'Bolivia',       p: 1490,  r: 22000  },
+  { c: 'Russia',        p: 1280,  r: 92000  },
+  { c: 'Poland',        p: 1320,  r: 59000  },
+  { c: 'Chile',         p: 1200,  r: 33000  },
+  { c: 'Australia',     p: 1050,  r: 109000 },
+  { c: 'United States', p: 1050,  r: 23000  },
+  { c: 'Kazakhstan',    p: 850,   r: null   },
+  { c: 'India',         p: 700,   r: 8000   },
+  { c: 'Argentina',     p: 774,   r: 6500   },
+  { c: 'Sweden',        p: 432,   r: null   },
+  { c: 'Canada',        p: 366,   r: 4900   },
+];
+const totalProd = producers.reduce((s,d) => s + d.p, 0) + 2110; // incl. Other
+
+/* ── OVERVIEW: demand donut ────────────────────────── */
+new Chart(document.getElementById('chart-overview-demand'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Industrial', 'Physical investment', 'Jewelry', 'Photography', 'Silverware'],
+    datasets: [{
+      data: [680.5, 224.0, 208.7, 25.2, 21.6],
+      backgroundColor: [ACCENT, ACCENT2, '#a87be0', '#6fc48c', '#e0b44a'],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    ...baseOptions({ scales: {} }),
+    cutout: '62%',
+    plugins: {
+      legend: { position: 'right', labels: { color: MUTED, font: { size: 12 }, boxWidth: 12, padding: 12 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(1)} Moz (${(ctx.parsed/1162.5*100).toFixed(1)}%)`
+        }
+      }
+    }
+  }
+});
+
+/* ── OVERVIEW: supply-demand trend line ────────────── */
+new Chart(document.getElementById('chart-overview-trend'), {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: [
+      { label: 'Total supply', data: totalSup, borderColor: ACCENT, backgroundColor: ACCENT_DIM, fill: true, tension: 0.3, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
+      { label: 'Total demand', data: demand,   borderColor: DEFICIT_C, backgroundColor: 'transparent', tension: 0.3, pointRadius: 4, pointHoverRadius: 6, borderWidth: 2, borderDash: [5,3] },
+    ]
+  },
+  options: baseOptions({
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + ' Moz' }, suggestedMin: 850 }
+    },
+    plugins: {
+      legend: { labels: { color: MUTED, font: { size: 12 }, boxWidth: 12, padding: 16 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} Moz` } }
+    }
+  })
+});
+
+/* ── OVERVIEW: grouped bar producers + reserves ────── */
+const top10 = producers.slice(0, 10);
+new Chart(document.getElementById('chart-overview-producers'), {
+  type: 'bar',
+  data: {
+    labels: top10.map(d => d.c),
+    datasets: [
+      { label: 'Production 2024 (t)', data: top10.map(d => d.p), backgroundColor: ACCENT, borderRadius: 3, barPercentage: 0.45 },
+      { label: 'Reserves (t)', data: top10.map(d => d.r || 0), backgroundColor: 'rgba(123,159,232,0.45)', borderRadius: 3, barPercentage: 0.45 },
+    ]
+  },
+  options: baseOptions({
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED, maxRotation: 35, minRotation: 30 } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v.toLocaleString() + ' t' } }
+    },
+    plugins: {
+      legend: { labels: { color: MUTED, font: { size: 12 }, boxWidth: 12, padding: 16 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} t` } }
+    }
+  })
+});
+
+/* ── PRODUCTION: horizontal bar ────────────────────── */
+const sortedProd = [...producers].sort((a,b) => b.p - a.p);
+new Chart(document.getElementById('chart-prod-bar'), {
+  type: 'bar',
+  data: {
+    labels: sortedProd.map(d => d.c),
+    datasets: [{
+      label: 'Mine output (t)',
+      data: sortedProd.map(d => d.p),
+      backgroundColor: sortedProd.map((d,i) => i < 3 ? ACCENT : 'rgba(92,200,224,0.4)'),
+      borderRadius: 3,
+      barThickness: 16,
+    }]
+  },
+  options: {
+    ...baseOptions(),
+    indexAxis: 'y',
+    scales: {
+      y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } },
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v.toLocaleString() + ' t' } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x.toLocaleString()} metric tons` } }
+    }
+  }
+});
+
+/* ── PRODUCTION: D3 choropleth world map ───────────── */
+(async function buildMap() {
+  const container = document.getElementById('map-container');
+
+  // ISO 3166-1 numeric → production data (USGS MCS 2026)
+  const prodByNumericId = {
+    484: { name: 'Mexico',         prod: 5780,  share: 22.8 },
+    604: { name: 'Peru',           prod: 3510,  share: 13.9 },
+    156: { name: 'China',          prod: 3430,  share: 13.6 },
+    68:  { name: 'Bolivia',        prod: 1490,  share:  5.9 },
+    616: { name: 'Poland',         prod: 1320,  share:  5.2 },
+    643: { name: 'Russia',         prod: 1280,  share:  5.1 },
+    152: { name: 'Chile',          prod: 1200,  share:  4.7 },
+    36:  { name: 'Australia',      prod: 1050,  share:  4.1 },
+    840: { name: 'United States',  prod: 1050,  share:  4.1 },
+    398: { name: 'Kazakhstan',     prod: 850,   share:  3.4 },
+    32:  { name: 'Argentina',      prod: 774,   share:  3.1 },
+    356: { name: 'India',          prod: 700,   share:  2.8 },
+    752: { name: 'Sweden',         prod: 432,   share:  1.7 },
+    124: { name: 'Canada',         prod: 366,   share:  1.4 },
+  };
+
+  const maxProd = Math.max(...Object.values(prodByNumericId).map(d => d.prod));
+
+  // Color interpolator: non-producers = dark neutral; producers scaled on accent
+  const colorScale = d3.scaleSequential()
+    .domain([0, maxProd])
+    .interpolator(t => `rgba(92, 200, 224, ${0.08 + t * 0.82})`);
+
+  // Tooltip element
+  const tooltip = Object.assign(document.createElement('div'), {
+    style: `position:absolute;pointer-events:none;background:#111622;border:1px solid rgba(92,200,224,0.3);
+            border-radius:6px;padding:10px 14px;font-family:'Fira Code',monospace;font-size:12px;
+            color:#e8edf8;line-height:1.6;display:none;z-index:200;white-space:nowrap;
+            box-shadow:0 4px 16px rgba(0,0,0,0.5);`
+  });
+  container.appendChild(tooltip);
+
+  function renderMap() {
+    // Remove old SVG if redrawing
+    d3.select(container).select('svg').remove();
+
+    const W = container.clientWidth || 900;
+    const H = Math.max(340, Math.round(W * 0.48));
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', W)
+      .attr('height', H)
+      .attr('viewBox', `0 0 ${W} ${H}`)
+      .style('display', 'block')
+      .style('width', '100%')
+      .style('height', H + 'px');
+
+    // Ocean background
+    svg.append('rect')
+      .attr('width', W).attr('height', H)
+      .attr('fill', '#111822');
+
+    // Natural Earth projection, fitted to our dimensions
+    const projection = d3.geoNaturalEarth1()
+      .scale(W / 6.5)
+      .translate([W / 2, H / 2 + H * 0.04]);
+
+    const pathGen = d3.geoPath().projection(projection);
+
+    // Sphere (ocean boundary)
+    svg.append('path')
+      .datum({ type: 'Sphere' })
+      .attr('d', pathGen)
+      .attr('fill', '#111822')
+      .attr('stroke', 'rgba(92,200,224,0.15)')
+      .attr('stroke-width', 0.8);
+
+    // Graticule
+    svg.append('path')
+      .datum(d3.geoGraticule()())
+      .attr('d', pathGen)
+      .attr('fill', 'none')
+      .attr('stroke', 'rgba(92,200,224,0.06)')
+      .attr('stroke-width', 0.4);
+
+    // Fetch TopoJSON and draw countries
+    d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+      const countries = topojson.feature(world, world.objects.countries);
+
+      // Country fills
+      svg.selectAll('.country')
+        .data(countries.features)
+        .enter()
+        .append('path')
+        .attr('class', 'country')
+        .attr('d', pathGen)
+        .attr('fill', d => {
+          const info = prodByNumericId[+d.id];
+          return info ? colorScale(info.prod) : 'rgba(38,48,70,0.85)';
+        })
+        .attr('stroke', d => prodByNumericId[+d.id] ? 'rgba(92,200,224,0.55)' : 'rgba(255,255,255,0.04)')
+        .attr('stroke-width', d => prodByNumericId[+d.id] ? 0.8 : 0.3)
+        .style('cursor', d => prodByNumericId[+d.id] ? 'pointer' : 'default')
+        .on('mousemove', function(event, d) {
+          const info = prodByNumericId[+d.id];
+          if (!info) { tooltip.style.display = 'none'; return; }
+          const rect = container.getBoundingClientRect();
+          const x = event.clientX - rect.left + 12;
+          const y = event.clientY - rect.top - 10;
+          tooltip.innerHTML = `<span style="color:#5cc8e0;font-weight:600">${info.name}</span><br>
+            Output: <span style="color:#e8edf8">${info.prod.toLocaleString()} t</span><br>
+            Share: <span style="color:#e8edf8">${info.share}% of world</span>`;
+          tooltip.style.left = Math.min(x, W - 210) + 'px';
+          tooltip.style.top  = Math.max(y, 4) + 'px';
+          tooltip.style.display = 'block';
+        })
+        .on('mouseleave', () => { tooltip.style.display = 'none'; });
+
+      // Country border mesh (non-producing countries only)
+      svg.append('path')
+        .datum(topojson.mesh(world, world.objects.countries, (a, b) => a !== b))
+        .attr('d', pathGen)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(255,255,255,0.04)')
+        .attr('stroke-width', 0.3)
+        .style('pointer-events', 'none');
+
+      // Country name labels for top producers (rendered over the countries)
+      const labelThreshold = 900; // only show labels if wide enough
+      if (W >= labelThreshold) {
+        Object.entries(prodByNumericId)
+          .filter(([, d]) => d.prod >= 1000)
+          .forEach(([id, info]) => {
+            const feature = countries.features.find(f => +f.id === +id);
+            if (!feature) return;
+            const centroid = pathGen.centroid(feature);
+            if (!centroid || isNaN(centroid[0])) return;
+
+            // Short name adjustments
+            const shortNames = {
+              'United States': 'USA', 'Australia': 'AUS', 'Kazakhstan': 'KAZ'
+            };
+            const label = shortNames[info.name] || info.name;
+
+            // Shadow for legibility
+            svg.append('text')
+              .attr('x', centroid[0]).attr('y', centroid[1] - 1)
+              .attr('text-anchor', 'middle')
+              .attr('font-family', "'Fira Code', monospace")
+              .attr('font-size', '9.5px')
+              .attr('font-weight', '500')
+              .attr('fill', 'rgba(0,0,0,0.6)')
+              .attr('stroke', 'rgba(0,0,0,0.4)')
+              .attr('stroke-width', 2.5)
+              .attr('paint-order', 'stroke')
+              .style('pointer-events', 'none')
+              .text(label);
+
+            // Label
+            svg.append('text')
+              .attr('x', centroid[0]).attr('y', centroid[1] - 1)
+              .attr('text-anchor', 'middle')
+              .attr('font-family', "'Fira Code', monospace")
+              .attr('font-size', '9.5px')
+              .attr('font-weight', '500')
+              .attr('fill', '#e8edf8')
+              .style('pointer-events', 'none')
+              .text(label);
+          });
+      }
+
+      // Colour legend (bottom-left)
+      const legendW = 160, legendH = 10;
+      const lx = 20, ly = H - 44;
+      const defs = svg.append('defs');
+      const grad = defs.append('linearGradient').attr('id', 'map-legend-grad');
+      [0, 0.25, 0.5, 0.75, 1].forEach(t => {
+        grad.append('stop')
+          .attr('offset', t * 100 + '%')
+          .attr('stop-color', colorScale(t * maxProd));
+      });
+
+      svg.append('rect')
+        .attr('x', lx).attr('y', ly)
+        .attr('width', legendW).attr('height', legendH)
+        .attr('rx', 3)
+        .attr('fill', 'url(#map-legend-grad)')
+        .attr('stroke', 'rgba(92,200,224,0.2)')
+        .attr('stroke-width', 0.5);
+
+      const legendLabels = [
+        { x: lx,              label: '0 t' },
+        { x: lx + legendW/2,  label: '2,900 t' },
+        { x: lx + legendW,    label: '5,780 t' },
+      ];
+      legendLabels.forEach(({ x, label }) => {
+        svg.append('text')
+          .attr('x', x).attr('y', ly + legendH + 13)
+          .attr('text-anchor', 'middle')
+          .attr('font-family', "'Fira Code', monospace")
+          .attr('font-size', '9px')
+          .attr('fill', 'rgba(140,160,185,0.8)')
+          .text(label);
+      });
+
+      svg.append('text')
+        .attr('x', lx).attr('y', ly - 5)
+        .attr('font-family', "'Fira Code', monospace")
+        .attr('font-size', '9px')
+        .attr('fill', 'rgba(140,160,185,0.7)')
+        .text('Mine output (metric tons, 2024)');
+    }).catch(() => {
+      // Graceful fallback if fetch fails
+      svg.append('text')
+        .attr('x', W/2).attr('y', H/2)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'rgba(140,160,185,0.5)')
+        .attr('font-family', "'Fira Sans', sans-serif")
+        .attr('font-size', '13px')
+        .text('Map requires internet connection to load country boundaries.');
+    });
+  }
+
+  renderMap();
+  let _resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(renderMap, 150);
+  });
+})();
+
+/* ── PRODUCTION: table ─────────────────────────────── */
+(function buildTable() {
+  const tbody = document.getElementById('producers-tbody');
+  const top12 = [...producers].sort((a,b) => b.p - a.p).slice(0, 12);
+  const maxP = top12[0].p;
+  top12.forEach((d, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="rank-num">${i+1}</td>
+      <td class="country-name">${d.c}</td>
+      <td>
+        <div class="share-bar-wrap">
+          <div class="share-bar" style="width:${(d.p/maxP)*140}px"></div>
+          <span class="share-val">${(d.p/totalProd*100).toFixed(1)}%</span>
+        </div>
+      </td>
+      <td class="prod-val">${d.p.toLocaleString()}</td>
+      <td class="prod-reserves">${d.r ? d.r.toLocaleString() : 'N/A'}</td>`;
+    tbody.appendChild(tr);
+  });
+})();
+
+/* ── DEMAND: pie (global segments) ────────────────── */
+new Chart(document.getElementById('chart-demand-pie'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Industrial (incl. PV, EVs, electronics)', 'Physical investment', 'Jewelry', 'Photography', 'Silverware'],
+    datasets: [{
+      data: [680.5, 224.0, 208.7, 25.2, 21.6],
+      backgroundColor: [ACCENT, ACCENT2, '#a87be0', '#6fc48c', '#e0b44a'],
+      borderWidth: 0,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    ...baseOptions({ scales: {} }),
+    cutout: '58%',
+    plugins: {
+      legend: { position: 'right', labels: { color: MUTED, font: { size: 11 }, boxWidth: 10, padding: 10 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.parsed.toFixed(1)} Moz (${(ctx.parsed/1162.5*100).toFixed(1)}%)`
+        }
+      }
+    }
+  }
+});
+
+/* ── DEMAND: US end-uses horizontal bar ────────────── */
+new Chart(document.getElementById('chart-demand-uses'), {
+  type: 'bar',
+  data: {
+    labels: ['Electrical & electronics', 'Other industrial', 'Net investment', 'Photovoltaics', 'Coins & medals', 'Jewelry/silverware', 'Brazing & solder'],
+    datasets: [{
+      label: '% of US consumption',
+      data: [25, 19, 18, 15, 14, 6, 3],
+      backgroundColor: [ACCENT, 'rgba(92,200,224,0.65)', 'rgba(92,200,224,0.5)', 'rgba(92,200,224,0.55)', 'rgba(92,200,224,0.4)', 'rgba(92,200,224,0.3)', 'rgba(92,200,224,0.2)'],
+      borderRadius: 3,
+      barThickness: 18,
+    }]
+  },
+  options: {
+    ...baseOptions(),
+    indexAxis: 'y',
+    scales: {
+      y: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } },
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + '%' }, max: 30 }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x}% of US apparent consumption (2025)` } }
+    }
+  }
+});
+
+/* ── DEMAND: PV share trend ────────────────────────── */
+new Chart(document.getElementById('chart-pv-trend'), {
+  type: 'line',
+  data: {
+    labels: [2014, 2016, 2018, 2020, 2022, 2024],
+    datasets: [{
+      label: 'PV share of industrial silver demand',
+      data: [11, 13, 16, 20, 24, 29],
+      borderColor: ACCENT,
+      backgroundColor: ACCENT_DIM,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 5,
+      pointBackgroundColor: ACCENT,
+      borderWidth: 2,
+    }]
+  },
+  options: baseOptions({
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + '%' }, min: 0, max: 35,
+        title: { display: true, text: '% of industrial demand', color: MUTED, font: { size: 11 } } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}% of industrial silver demand was PV solar in ${ctx.label}` } }
+    }
+  })
+});
+
+/* ── SUPPLY-DEMAND: stacked bar + demand line ──────── */
+new Chart(document.getElementById('chart-sd-stacked'), {
+  type: 'bar',
+  data: {
+    labels: years,
+    datasets: [
+      { label: 'Mine supply', data: mineSup, backgroundColor: ACCENT, stack: 'supply', borderRadius: 0 },
+      { label: 'Recycling',   data: recyc,   backgroundColor: ACCENT2, stack: 'supply', borderRadius: 2 },
+      { type: 'line', label: 'Total demand', data: demand, borderColor: DEFICIT_C, backgroundColor: 'transparent', borderWidth: 2.5, borderDash: [6,3], pointRadius: 5, pointBackgroundColor: DEFICIT_C, tension: 0.2, order: 0 },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500 },
+    interaction: { mode: 'index' },
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED }, stacked: true },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + ' Moz' }, stacked: false, suggestedMin: 850 }
+    },
+    plugins: {
+      legend: { labels: { color: MUTED, font: { size: 12 }, boxWidth: 12, padding: 16 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)} Moz` } }
+    }
+  }
+});
+
+/* ── SUPPLY-DEMAND: deficit bar ────────────────────── */
+new Chart(document.getElementById('chart-deficit-bar'), {
+  type: 'bar',
+  data: {
+    labels: years,
+    datasets: [{
+      label: 'Deficit (+) / Surplus (-)',
+      data: deficit,
+      backgroundColor: deficit.map(v => v > 0 ? DEFICIT_C + 'cc' : SURPLUS_C + 'cc'),
+      borderRadius: 4,
+      barThickness: 36,
+    }]
+  },
+  options: {
+    ...baseOptions(),
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + ' Moz' } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: {
+        label: ctx => {
+          const v = ctx.parsed.y;
+          return v > 0 ? ` Deficit: ${v.toFixed(1)} Moz` : ` Surplus: ${Math.abs(v).toFixed(1)} Moz`;
+        }
+      }}
+    }
+  }
+});
+
+/* ── SUPPLY-DEMAND: recycling trend ────────────────── */
+new Chart(document.getElementById('chart-recycling'), {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: [{
+      label: 'Recycling (Moz)',
+      data: recyc,
+      borderColor: ACCENT2,
+      backgroundColor: 'rgba(123,159,232,0.15)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 5,
+      pointBackgroundColor: ACCENT2,
+      borderWidth: 2,
+    }]
+  },
+  options: baseOptions({
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + ' Moz' }, suggestedMin: 160 }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` Recycling: ${ctx.parsed.y.toFixed(1)} Moz` } }
+    }
+  })
+});
+
+/* ── PRICES: history line ──────────────────────────── */
+new Chart(document.getElementById('chart-price-history'), {
+  type: 'line',
+  data: {
+    labels: priceYrs,
+    datasets: [{
+      label: 'Avg price (USD/oz)',
+      data: prices,
+      borderColor: ACCENT,
+      backgroundColor: ACCENT_DIM,
+      fill: true,
+      tension: 0.35,
+      pointRadius: priceYrs.map(y => y === 2025 ? 7 : 4),
+      pointBackgroundColor: priceYrs.map(y => y === 2025 ? ACCENT : ACCENT),
+      pointBorderColor: priceYrs.map(y => y === 2025 ? '#fff' : ACCENT),
+      pointBorderWidth: priceYrs.map(y => y === 2025 ? 2 : 0),
+      borderWidth: 2.5,
+    }]
+  },
+  options: baseOptions({
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => '$' + v.toFixed(2) }, suggestedMin: 12 }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` $${ctx.parsed.y.toFixed(2)} per troy ounce` } }
+    }
+  })
+});
+
+/* ── PRICES: import reliance ───────────────────────── */
+new Chart(document.getElementById('chart-import-reliance'), {
+  type: 'bar',
+  data: {
+    labels: [2021, 2022, 2023, 2024, 2025],
+    datasets: [{
+      label: 'Net import reliance (%)',
+      data: [76, 67, 69, 68, 77],
+      backgroundColor: [ACCENT+'99', ACCENT+'99', ACCENT+'99', ACCENT+'99', ACCENT],
+      borderRadius: 4,
+      barThickness: 28,
+    }]
+  },
+  options: {
+    ...baseOptions(),
+    scales: {
+      x: { grid: { display: false }, ticks: { color: MUTED } },
+      y: { grid: { color: GRID_C }, ticks: { color: MUTED, callback: v => v + '%' }, min: 0, max: 100 }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}% of US consumption was imported` } }
+    }
+  }
+});
+
+/* ── SCALE: commodity comparison ───────────────────── */
+new Chart(document.getElementById('chart-scale-compare'), {
+  type: 'bar',
+  data: {
+    labels: ['Steel', 'Aluminium', 'Copper', 'Zinc', 'Nickel', 'Cobalt', 'Lithium', 'Silver'],
+    datasets: [{
+      label: 'Annual production (Mt)',
+      data: [1900, 70, 22, 13, 3.4, 0.22, 0.18, 0.025],
+      backgroundColor: ['#6b7898','#7ab0cc','#c87850','#8898a8','#a878c8','#5088c8','#78c8a0', ACCENT],
+      borderRadius: 4,
+      barThickness: 32,
+    }]
+  },
+  options: {
+    ...baseOptions(),
+    scales: {
+      x: { grid: { color: GRID_C }, ticks: { color: MUTED } },
+      y: {
+        type: 'logarithmic',
+        grid: { color: GRID_C },
+        ticks: {
+          color: MUTED,
+          callback: v => {
+            if (v === 1000) return '1,000 Mt';
+            if (v === 100) return '100 Mt';
+            if (v === 10) return '10 Mt';
+            if (v === 1) return '1 Mt';
+            if (v === 0.1) return '0.1 Mt';
+            if (v === 0.01) return '0.01 Mt';
+            return null;
+          }
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString()} Mt per year` } }
+    }
+  }
+});
+
+/* ── Tab switching ─────────────────────────────────── */
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const isActive = btn.id === 'tab-' + id;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === 'panel-' + id);
+  });
+  window.location.hash = id;
+}
+
+// Deep-link support
+(function() {
+  const hash = window.location.hash.replace('#', '');
+  const valid = ['overview','production','demand','supplydemand','prices','scale'];
+  if (valid.includes(hash)) switchTab(hash);
+})();
+</script>
+</body>
+</html>
